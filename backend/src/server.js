@@ -29,13 +29,21 @@ app.get('/health', (req, res) => {
   res.status(200).json({ msg: 'API is running successfully' });
 });
 
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Internal server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
+// Export app for Vercel serverless
+export default app;
+
+// Start server locally
 const PORT = ENV.PORT || 3000;
 
 const startServer = async () => {
@@ -49,4 +57,7 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start server if not in Vercel environment
+if (process.env.VERCEL !== '1') {
+  startServer();
+}
