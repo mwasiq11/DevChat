@@ -10,7 +10,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: '*',
+  origin:'*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -57,7 +57,4 @@ const startServer = async () => {
   }
 };
 
-// Only start server if not in Vercel environment
-if (process.env.VERCEL !== '1') {
-  startServer();
-}
+startServer()
