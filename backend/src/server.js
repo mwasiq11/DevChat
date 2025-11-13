@@ -2,6 +2,8 @@ import express from 'express';
 import { ENV } from './lib/env.js';
 import cors from 'cors';
 import { connectDB } from './lib/db.js';
+import { inngest,functions } from './lib/inngest.js';
+import {serve} from 'inngest/express';
 
 const app=express()
 app.use(express.json())
@@ -12,6 +14,11 @@ app.use(cors({
 	credentials:true
 }))
 
+app.use('/api/inngest',serve({client:inngest,functions}))
+
+app.get("/",(req,res,next)=>{
+	res.status(200).send("backend is running successfully")
+})
 app.get("/health",(req,res,next)=>{
 	res.status(200).json({msg:"successfully run the api."})
 })
