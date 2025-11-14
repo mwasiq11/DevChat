@@ -1,7 +1,7 @@
 import { Inngest } from "inngest";
 import {connectDB}from "../lib/db.js"
 import User from "../models/User.js"
-import { createUser, deleteUser } from "./stream.js";
+import { createUser, deleteUser } from '../lib/stream.js';
 
 export const inngest = new Inngest({ id: "devchat" });
 
