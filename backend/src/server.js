@@ -1,20 +1,16 @@
 import express from 'express';
+import path from 'path';
 import { ENV } from './lib/env.js';
-import cors from 'cors';
 import { connectDB } from './lib/db.js';
 import { inngest, functions } from './lib/inngest.js';
 import { serve } from 'inngest/express';
 
 const app = express();
+const __dirname = path.resolve();
 
 // Middleware
 app.use(express.json());
-app.use(cors({
-  origin:'*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+
 
 // Inngest route
 app.use('/api/inngest', serve({ client: inngest, functions }));
@@ -29,28 +25,22 @@ app.get('/health', (req, res) => {
   res.status(200).json({ msg: 'API is running successfully' });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
+if (ENV.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Internal server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// Export app for Vercel serverless
-export default app;
+  app.get("/{*any}", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  });
+}
 
 // Start server locally
-const PORT = ENV.PORT || 3000;
+const PORT = ENV.PORT;
 
 const startServer = async () => {
   try {
     await connectDB();
     app.listen(PORT, () => {
-      console.log(`App running on port ${PORT}`);
+      console.log(`App running on port:${PORT}`);
     });
   } catch (error) {
     console.error('Error starting the server', error);
