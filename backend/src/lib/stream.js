@@ -1,4 +1,5 @@
 import { StreamChat } from "stream-chat";
+import {StreamClient} from "@stream-io/node-sdk"
 import { ENV } from "./env.js";
 
 const apikey=ENV.STREAM_API_KEY;
@@ -8,6 +9,7 @@ if (!apikey||!apiSecret) {
 	throw new Error(`Stream API key and secret must be set in environment variables`)
 }
 
+export const streamClient=new StreamClient(apikey,apiSecret)
 export const chatClient = StreamChat.getInstance(apikey,apiSecret);
 
 export const createUser=async(userData)=>{
