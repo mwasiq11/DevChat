@@ -17,15 +17,10 @@ app.use(express.json());
 app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
 app.use(clerkMiddleware())
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
 // Inngest route
 app.use('/api/inngest', serve({ client: inngest, functions }));
-app.use('/api/chat',chatRoutes);
-app.use('/api/sessions',sessionRoutes)
-
-// API routes (place all your API routes here before the catch-all)
+app.use('/api/chat', chatRoutes);
+app.use('/api/sessions', sessionRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -33,7 +28,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ msg: 'API is running successfully' });
 });
 
-// Catch-all: serve frontend for all unmatched routes
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+// Catch-all: serve frontend for all unmatched routes (SPA)
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
 });

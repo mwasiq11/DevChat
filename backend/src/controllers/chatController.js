@@ -1,6 +1,9 @@
-import { chatClient } from "../lib/stream.js";
+import { chatClient, isStreamConfigured } from "../lib/stream.js";
 
 export async function getStreamToken(req,res){
+		if(!isStreamConfigured){
+			return res.status(503).json({message:"Stream not configured"});
+		}
 		try{
 				const token=chatClient.createToken(req.user.clerkId);
 				if(!token){
@@ -10,7 +13,7 @@ export async function getStreamToken(req,res){
 					token,
 					userId:req.user.clerkId,
 					userName:req.user.name,
-					userImage:req.user.userImage
+					userImage:req.user.profileImage
 				})
 		}
 		catch(error){
