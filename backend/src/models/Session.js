@@ -22,9 +22,19 @@ const sessionSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    callId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    streamReady: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ["active", "completed"],
+      default: "active",
     },
   },
   { timestamps: true }
