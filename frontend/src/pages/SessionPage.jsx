@@ -264,6 +264,18 @@ function SessionPage() {
                     <p className="text-lg">Connecting to video call...</p>
                   </div>
                 </div>
+              ) : session?.status === "completed" ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="card bg-base-100 shadow-xl max-w-md">
+                    <div className="card-body items-center text-center">
+                      <div className="w-24 h-24 bg-warning/10 rounded-full flex items-center justify-center mb-4">
+                        <PhoneOffIcon className="w-12 h-12 text-warning" />
+                      </div>
+                      <h2 className="card-title text-2xl">Session Ended</h2>
+                      <p className="text-base-content/70">This session has been completed</p>
+                    </div>
+                  </div>
+                </div>
               ) : !streamClient || !call ? (
                 <div className="h-full flex items-center justify-center">
                   <div className="card bg-base-100 shadow-xl max-w-md">

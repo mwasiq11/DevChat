@@ -34,7 +34,12 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
         setStreamClient(client);
 
         videoCall = client.call("default", session.callId);
-        await videoCall.join({ create: true });
+        // Join without enabling camera/mic by default (optional media)
+        await videoCall.join({ 
+          create: true,
+          video: false, // Don't request video stream initially
+          audio: false, // Don't request audio stream initially
+        });
         setCall(videoCall);
 
         const apiKey = import.meta.env.VITE_STREAM_API_KEY;
@@ -54,8 +59,14 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
         await chatChannel.watch();
         setChannel(chatChannel);
       } catch (error) {
-        toast.error("Failed to join video call");
-        console.error("Error init call", error);
+        // Don't show error toast for device not found errors (expected when no camera/mic)
+        if (!error.message?.includes("device not found") && !error.message?.includes("Requested device not found")) {
+          toast.error("Failed to join video call");
+          console.error("Error init call", error);
+        } else {
+          // Device errors are expected, just log them
+          console.warn("Media device not available (camera/mic), continuing without media:", error.message);
+        }
       } finally {
         setIsInitializingCall(false);
       }
@@ -68,11 +79,34 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
       // iife
       (async () => {
         try {
-          if (videoCall) await videoCall.leave();
-          if (chatClientInstance) await chatClientInstance.disconnectUser();
+          // Check if call is still active before trying to leave
+          if (videoCall) {
+            try {
+              // Check if call state exists and is not already left
+              const callingState = videoCall.callingState;
+              if (callingState && callingState !== "LEFT") {
+                await videoCall.leave();
+              }
+            } catch (leaveError) {
+              // Ignore errors if call is already left or doesn't exist
+              if (!leaveError.message?.includes("already been left")) {
+                console.warn("Error leaving call during cleanup:", leaveError.message);
+              }
+            }
+          }
+          if (chatClientInstance) {
+            try {
+              await chatClientInstance.disconnectUser();
+            } catch (disconnectError) {
+              console.warn("Error disconnecting chat client:", disconnectError.message);
+            }
+          }
           await disconnectStreamClient();
         } catch (error) {
-          console.error("Cleanup error:", error);
+          // Only log non-expected errors
+          if (!error.message?.includes("already been left")) {
+            console.error("Cleanup error:", error);
+          }
         }
       })();
     };

@@ -5,7 +5,7 @@ import {
   useCallStateHooks,
 } from "@stream-io/video-react-sdk";
 import { Loader2Icon, MessageSquareIcon, UsersIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Channel, Chat, MessageInput, MessageList, Thread, Window } from "stream-chat-react";
 
@@ -16,8 +16,47 @@ function VideoCallUI({ chatClient, channel }) {
   const navigate = useNavigate();
   const { useCallCallingState, useParticipantCount } = useCallStateHooks();
   const callingState = useCallCallingState();
+  // Note: getSnapshot warning is a known React 19 + Stream SDK compatibility issue
+  // It doesn't affect functionality, just a dev-mode warning
   const participantCount = useParticipantCount();
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Suppress expected device errors in console (when no camera/mic available)
+  useEffect(() => {
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    
+    console.error = (...args) => {
+      const message = args[0]?.toString() || "";
+      // Suppress device not found errors (expected when no camera/mic)
+      if (
+        message.includes("device not found") ||
+        message.includes("Requested device not found") ||
+        message.includes("Camera init failed") ||
+        message.includes("Mic init failed") ||
+        message.includes("Failed to get video stream") ||
+        message.includes("Failed to get audio stream")
+      ) {
+        // Silently ignore these expected errors
+        return;
+      }
+      originalError.apply(console, args);
+    };
+
+    console.warn = (...args) => {
+      const message = args[0]?.toString() || "";
+      // Suppress participant not found warnings (can happen during cleanup)
+      if (message.includes("Participant with sessionId") && message.includes("not found")) {
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
+    return () => {
+      console.error = originalError;
+      console.warn = originalWarn;
+    };
+  }, []);
 
   if (callingState === CallingState.JOINING) {
     return (

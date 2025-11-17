@@ -5,17 +5,30 @@ const ensureUserExists = async (clerkId) => {
   let user = await User.findOne({ clerkId });
   if (user) return user;
 
-  // Fetch the latest profile from Clerk when the user is missing locally
-  const clerkUser = await clerkClient.users.getUser(clerkId);
+  // Try to fetch the latest profile from Clerk when the user is missing locally
+  let clerkUser = null;
+  if (clerkClient) {
+    try {
+      clerkUser = await clerkClient.users.getUser(clerkId);
+    } catch (clerkError) {
+      console.error("Failed to fetch user from Clerk API:", clerkError.message);
+      // Continue with minimal user creation if Clerk API fails
+    }
+  } else {
+    console.warn("Clerk client not available, creating user with minimal info");
+  }
 
   const email =
     clerkUser?.emailAddresses?.[0]?.emailAddress ||
-    clerkUser?.primaryEmailAddress?.emailAddress;
+    clerkUser?.primaryEmailAddress?.emailAddress ||
+    `${clerkId}@temp.local`;
 
   const name =
-    `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
+    (clerkUser?.firstName || clerkUser?.lastName
+      ? `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim()
+      : null) ||
     clerkUser?.username ||
-    email ||
+    (email?.split("@")[0] || "user") ||
     "Unknown User";
 
   user = await User.create({
@@ -49,8 +62,15 @@ export const protectRoute = [
       req.user = user;
       next();
     } catch (error) {
-      console.error("Error in protectRoute middleware", error);
-      res.status(500).json({ message: "Internal Server Error" });
+      console.error("Error in protectRoute middleware:", {
+        message: error.message,
+        stack: error.stack,
+        clerkId: req.auth?.userId,
+      });
+      res.status(500).json({ 
+        message: "Internal Server Error",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined
+      });
     }
   },
 ];
