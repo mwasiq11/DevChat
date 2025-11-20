@@ -1,21 +1,30 @@
 import express from 'express';
-import path from 'path';
 import { ENV } from './lib/env.js';
 import { connectDB } from './lib/db.js';
 import { inngest, functions } from './lib/inngest.js';
 import { serve } from 'inngest/express';
 import cors from 'cors';
-import { clerkMiddleware } from '@clerk/express'
-import chatRoutes from './routes/chatRoutes.js'
-import sessionRoutes from './routes/sessionRoute.js'
+import { clerkMiddleware } from '@clerk/express';
+import chatRoutes from './routes/chatRoutes.js';
+import sessionRoutes from './routes/sessionRoute.js';
 
 const app = express();
-const __dirname = path.resolve();
 
 // Middleware
 app.use(express.json());
-app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
-app.use(clerkMiddleware())
+
+// Public root ping (available without Clerk auth)
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'API running successfully' });
+});
+
+app.use(
+  cors({
+    origin: '*',
+    credentials: false,
+  })
+);
+app.use(clerkMiddleware());
 
 // Inngest route
 app.use('/api/inngest', serve({ client: inngest, functions }));
@@ -28,32 +37,42 @@ app.get('/health', (req, res) => {
   res.status(200).json({ msg: 'API is running successfully' });
 });
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-// Catch-all: serve frontend for all unmatched routes (SPA)
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-});
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Internal server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
-const PORT = ENV.PORT || 3000;
-
-const startServer = async () => {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(`App running on http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error('Error starting the server', error);
+const ensureDbConnection = async () => {
+  if (globalThis.__DEVCHAT_DB_READY) {
+    return;
   }
+
+  await connectDB();
+  globalThis.__DEVCHAT_DB_READY = true;
 };
 
-startServer();
+// Local/dev server (not used on Vercel)
+if (process.env.VERCEL !== '1') {
+  const PORT = ENV.PORT || 3000;
+
+  const startServer = async () => {
+    try {
+      await ensureDbConnection();
+      app.listen(PORT, () => {
+        console.log(`App running on http://localhost:${PORT}`);
+      });
+    } catch (error) {
+      console.error('Error starting the server', error);
+    }
+  };
+
+  startServer();
+}
+
+const handler = async (req, res) => {
+  await ensureDbConnection();
+  return app(req, res);
+};
+
+export default handler;
