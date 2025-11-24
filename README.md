@@ -149,7 +149,7 @@ DevChat/
 
 🛠️ Installation & Setup
 1. Clone the repository
-git clone https://github.com/yourusername/DevChat.git
+git clone https://github.com/mwasiq11/DevChat.git
 cd DevChat
 
 2. Install dependencies
