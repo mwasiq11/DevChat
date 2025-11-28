@@ -53,12 +53,48 @@ app.use(express.json());
 // Request logging middleware (for debugging)
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+  console.log('Full URL:', req.url);
+  console.log('Original URL:', req.originalUrl);
+  console.log('Base URL:', req.baseUrl);
+  next();
+});
+
+// Vercel routing fix: Handle path modification when requests are routed through serverless function
+app.use((req, res, next) => {
+  // Log the incoming request details for debugging
+  const originalPath = req.path;
+  const originalUrl = req.originalUrl || req.url;
+  
+  // If we're on Vercel and the path is just '/', check if originalUrl has /api
+  if (process.env.VERCEL === '1' && originalPath === '/' && originalUrl.startsWith('/api/')) {
+    // Restore the full path from originalUrl
+    req.url = originalUrl;
+    console.log(`[Vercel Fix] Restored path from '/' to '${originalUrl}'`);
+  }
+  
+  // Also handle case where path doesn't include /api but originalUrl does
+  if (!originalPath.startsWith('/api') && originalUrl.startsWith('/api/')) {
+    req.url = originalUrl;
+    console.log(`[Vercel Fix] Restored path '${originalPath}' to '${originalUrl}'`);
+  }
+  
   next();
 });
 
 // Public root ping (available without Clerk auth)
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'API running successfully' });
+});
+
+// Handle POST to root - this shouldn't happen, but provide helpful error
+app.post('/', (req, res) => {
+  res.status(404).json({ 
+    error: 'Invalid endpoint',
+    message: 'POST requests should go to /api/sessions, not to the root path',
+    suggestion: 'Check your VITE_API_URL environment variable - it should be set to https://dev-chat-murex.vercel.app/api',
+    path: req.path,
+    originalUrl: req.originalUrl
+  });
 });
 
 // Test route to verify server is working (no auth required)

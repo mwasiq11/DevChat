@@ -22,4 +22,10 @@ The dev server proxies `/api` calls to `http://localhost:3000`, so make sure the
 npm run build:frontend
 ```
 
-Deploy the contents of `frontend/dist` to Vercel. Remember to configure the same `VITE_API_URL` env var in the Vercel dashboard so the SPA knows where your backend is hosted.
+Deploy the contents of `frontend/dist` to Vercel. 
+
+**Important:** Configure the `VITE_API_URL` environment variable in your Vercel project settings:
+- Go to your Vercel project → Settings → Environment Variables
+- Add/Update: `VITE_API_URL` = `https://dev-chat-murex.vercel.app/api`
+- Make sure to select **All Environments** (Production, Preview, Development)
+- **Redeploy** your frontend after setting the environment variable
