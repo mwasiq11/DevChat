@@ -52,30 +52,46 @@ app.use(express.json());
 
 // Request logging middleware (for debugging)
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
-  console.log('Full URL:', req.url);
-  console.log('Original URL:', req.originalUrl);
-  console.log('Base URL:', req.baseUrl);
+  console.log(`\n========== REQUEST RECEIVED ==========`);
+  console.log(`Method: ${req.method}`);
+  console.log(`Path: ${req.path}`);
+  console.log(`URL: ${req.url}`);
+  console.log(`Original URL: ${req.originalUrl}`);
+  console.log(`Base URL: ${req.baseUrl}`);
+  console.log(`Query:`, req.query);
+  console.log(`Headers:`, {
+    host: req.headers.host,
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'x-vercel-id': req.headers['x-vercel-id']
+  });
+  console.log(`=====================================\n`);
   next();
 });
 
-// Vercel routing fix: Handle path modification when requests are routed through serverless function
+// Vercel routing fix: Normalize paths for serverless function routing
+// On Vercel, when /api/* requests are routed to /api/index.js serverless function,
+// the path that Express receives might be modified. We need to handle this.
 app.use((req, res, next) => {
-  // Log the incoming request details for debugging
-  const originalPath = req.path;
+  // Get the raw request info
   const originalUrl = req.originalUrl || req.url;
+  const currentPath = req.path;
   
-  // If we're on Vercel and the path is just '/', check if originalUrl has /api
-  if (process.env.VERCEL === '1' && originalPath === '/' && originalUrl.startsWith('/api/')) {
-    // Restore the full path from originalUrl
-    req.url = originalUrl;
-    console.log(`[Vercel Fix] Restored path from '/' to '${originalUrl}'`);
-  }
+  // Vercel serverless functions receive the full path including /api
+  // So /api/sessions becomes available as req.url = '/api/sessions'
+  // But sometimes it might be just '/sessions' - handle both
   
-  // Also handle case where path doesn't include /api but originalUrl does
-  if (!originalPath.startsWith('/api') && originalUrl.startsWith('/api/')) {
+  // If path doesn't have /api but we're expecting API routes
+  if (!currentPath.startsWith('/api') && originalUrl.startsWith('/api')) {
+    // Restore the full path
     req.url = originalUrl;
-    console.log(`[Vercel Fix] Restored path '${originalPath}' to '${originalUrl}'`);
+    req.originalUrl = originalUrl;
+    console.log(`[Path Fix] Restored: ${currentPath} → ${originalUrl}`);
+  } 
+  // If we got the root path but originalUrl shows /api/*
+  else if (currentPath === '/' && originalUrl && originalUrl.startsWith('/api')) {
+    req.url = originalUrl;
+    req.originalUrl = originalUrl;
+    console.log(`[Path Fix] Root → API path: ${originalUrl}`);
   }
   
   next();
@@ -107,12 +123,28 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Also register test route without /api prefix for Vercel
+app.get('/test', (req, res) => {
+  res.status(200).json({ 
+    message: 'API test endpoint working (no prefix)',
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    path: req.path
+  });
+});
+
 app.use(clerkMiddleware());
 
 // Inngest route
 app.use('/api/inngest', serve({ client: inngest, functions }));
 app.use('/api/chat', chatRoutes);
 app.use('/api/sessions', sessionRoutes);
+
+// Also register routes without /api prefix for Vercel compatibility
+// When Vercel routes /api/sessions to /api/index.js, it may strip the /api prefix
+app.use('/inngest', serve({ client: inngest, functions }));
+app.use('/chat', chatRoutes);
+app.use('/sessions', sessionRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -123,20 +155,29 @@ app.get('/health', (req, res) => {
 // 404 handler for unmatched routes
 app.use((req, res) => {
   console.log(`404 - Route not found: ${req.method} ${req.path}`);
+  console.log(`404 - Original URL: ${req.originalUrl}`);
+  console.log(`404 - Full URL: ${req.url}`);
+  console.log(`404 - Base URL: ${req.baseUrl}`);
+  
   res.status(404).json({ 
     error: 'Route not found',
     method: req.method,
     path: req.path,
+    originalUrl: req.originalUrl,
+    fullUrl: req.url,
+    baseUrl: req.baseUrl,
     availableRoutes: [
       'GET /',
       'GET /health',
+      'GET /api/test',
       'POST /api/sessions',
       'GET /api/sessions/active',
       'GET /api/sessions/my-recent',
       'GET /api/sessions/:id',
       'POST /api/sessions/:id/join',
       'POST /api/sessions/:id/end'
-    ]
+    ],
+    note: 'If path does not start with /api, routes are also available without /api prefix'
   });
 });
 
