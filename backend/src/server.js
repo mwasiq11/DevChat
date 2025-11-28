@@ -215,14 +215,27 @@ if (process.env.VERCEL !== '1') {
 }
 
 const handler = async (req, res) => {
+  console.log('[Handler] Request received:', req.method, req.url);
+  
   try {
-    await ensureDbConnection();
+    // Ensure database connection (this is cached, so fast on subsequent requests)
+    ensureDbConnection().catch(err => {
+      console.warn('[Handler] DB connection warning (non-blocking):', err.message);
+    });
+    
+    // Handle request with Express app
     return app(req, res);
   } catch (error) {
-    console.error('Handler error:', error);
+    console.error('[Handler] Fatal error:', error);
+    console.error('[Handler] Error stack:', error.stack);
+    
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
+      return res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
+      });
     }
+    return res;
   }
 };
 
