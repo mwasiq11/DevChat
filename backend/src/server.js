@@ -39,7 +39,7 @@ app.use(
         callback(null, true);
       }
     },
-    credentials: false,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     exposedHeaders: ['Content-Type', 'Authorization'],
