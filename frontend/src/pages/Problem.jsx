@@ -68,11 +68,13 @@ useEffect(() => {
       .map((line) =>
         line
           .trim()
-          // remove spaces after [ and before ]
+          // remove all spaces inside brackets
           .replace(/\[\s+/g, "[")
           .replace(/\s+\]/g, "]")
-          // normalize spaces around commas to single space after comma
+          // normalize spaces around commas - remove all spaces
           .replace(/\s*,\s*/g, ",")
+          // remove any remaining internal spaces in arrays
+          .replace(/\s+/g, "")
       )
       .filter((line) => line.length > 0)
       .join("\n");
@@ -82,7 +84,9 @@ useEffect(() => {
     const normalizedActual = normalizeOutput(actualOutput);
     const normalizedExpected = normalizeOutput(expectedOutput);
 
-    return normalizedActual == normalizedExpected;
+    
+
+    return normalizedActual === normalizedExpected;
   };
 
   const handleRunCode = async () => {
