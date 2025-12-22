@@ -12,6 +12,7 @@ const app = express();
 const allowedOrigins = [
   'https://devcodes.dpdns.org',
   'https://dev-chat-murex.vercel.app',
+  'https://dev-chat-pi.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
 ];
@@ -67,25 +68,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Apply Clerk middleware early
+app.use(clerkMiddleware());
+
 // Public root ping (available without Clerk auth)
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'API running successfully' });
 });
 
-// Handle POST to root - this shouldn't happen, but provide helpful error
-app.post('/', (req, res) => {
-  res.status(404).json({ 
-    error: 'Invalid endpoint',
-    message: 'POST requests should go to /api/sessions, not to the root path',
-    suggestion: 'Check your VITE_API_URL environment variable - it should be set to https://dev-chat-murex.vercel.app/api',
-    path: req.path,
-    originalUrl: req.originalUrl
-  });
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({ msg: 'API is running successfully' });
 });
-
-
-
-app.use(clerkMiddleware());
 
 // Inngest route
 app.use('/api/inngest', serve({ client: inngest, functions }));
@@ -93,21 +87,9 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/sessions', sessionRoutes);
 
 // Also register routes without /api prefix for Vercel compatibility
-// When Vercel routes /api/sessions to /api/index.js, it may strip the /api prefix
 app.use('/inngest', serve({ client: inngest, functions }));
 app.use('/chat', chatRoutes);
 app.use('/sessions', sessionRoutes);
-
-// Health check route
-app.get('/health', (req, res) => {
-  req.auth;
-  res.status(200).json({ msg: 'API is running successfully' });
-});
-
-app.use("/",(req, res, next) => {
-  res.status(200).json({ error: 'Api is running successfully' });
-
-});
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Internal server error:', err);
