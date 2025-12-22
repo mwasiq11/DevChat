@@ -103,7 +103,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ msg: 'API is running successfully' });
 });
 
+app.use("/",(req, res, next) => {
+  res.status(200).json({ error: 'Api is running successfully' });
 
+});
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Internal server error:', err);
