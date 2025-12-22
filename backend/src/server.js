@@ -50,6 +50,7 @@ app.use(express.json());
 app.use((req, res, next) => {
   // Get the raw request info
   const originalUrl = req.originalUrl || req.url;
+  const currentPath = req.url;
   
   // If path doesn't have /api but we're expecting API routes
   if (!currentPath.startsWith('/api') && originalUrl.startsWith('/api')) {
