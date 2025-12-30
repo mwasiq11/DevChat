@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   useUser,
+  useAuth,
 } from "@clerk/clerk-react";
 import { Route, Routes, Navigate } from "react-router";
 import HomePage from "./pages/HomePage";
@@ -9,8 +10,17 @@ import DashboardPage from "./pages/DashboardPage";
 import ProblemsPage from "./pages/ProblemsPage";
 import Problem from "./pages/Problem";
 import SessionPage from "./pages/SessionPage";
+import { setAuthTokenGetter } from "./lib/axios";
+
 function App() {
   const {isSignedIn,isLoaded}=useUser();
+  const { getToken } = useAuth();
+  
+  // Set up the auth token getter for axios
+  useEffect(() => {
+    setAuthTokenGetter(getToken);
+  }, [getToken]);
+  
   if(!isLoaded) return null;
   return (
     <>

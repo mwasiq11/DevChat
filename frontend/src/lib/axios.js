@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuth } from "@clerk/clerk-react";
 
 // Get the API URL from environment variable
 let API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -21,14 +22,31 @@ console.log('[Axios Config] API Base URL:', API_BASE_URL);
 
 const axiosInstance = axios.create({
 	baseURL: API_BASE_URL,
-	withCredentials: false,
+	withCredentials: true,
 });
 
-// Add request interceptor for debugging
+// Store the getToken function to be set by the app
+let getAuthToken = null;
+
+export const setAuthTokenGetter = (getter) => {
+  getAuthToken = getter;
+};
+
+// Add request interceptor for authentication and debugging
 axiosInstance.interceptors.request.use(
-  (config) => {
-    const fullUrl = (config.baseURL || '') + (config.url || '');
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${fullUrl}`);
+  async (config) => {
+    // Add Clerk auth token if available
+    if (getAuthToken) {
+      try {
+        const token = await getAuthToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error('[Auth Token Error]', error);
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -44,8 +62,6 @@ axiosInstance.interceptors.response.use(
     console.error('[API Response Error]', {
       message: error.message,
       url: error.config?.url,
-      baseURL: error.config?.baseURL,
-      fullURL: (error.config?.baseURL || '') + (error.config?.url || ''),
       status: error.response?.status,
       data: error.response?.data
     });
